@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+
+main(){
+    #1: left click
+    #2: middle click
+    #3: right click
+    #4: scroll up
+    #5: scroll down
+    #6: double left click
+    #7: double middle click
+    #8: double right click
+	today="hoje: $(printf "%(%d)T\\n")"
+	calendar=$(cal)
+	new_line=$'\n'
+	notify-send "$calendar$new_line$today"
+}
+
+main

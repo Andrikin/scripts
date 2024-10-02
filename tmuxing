@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Faz um breve gerenciamento da sessão 'daily' no tmux
+# A ideia é sempre gerenciar a mesma sessão. Caso precise de mais sessões, realizar um gerenciamento manual.
+
+main(){
+	local SESSAO="daily"
+	if [[ -f "/tmp/tmux-$UID/default" ]]
+	then
+		if ! tmux has-session -t "$SESSAO"
+		then
+			tmux new -d -s "$SESSAO" -n main
+			tmux new-window -d -t "$SESSAO" -n bash
+		else
+			tmux attach -t "$SESSAO"
+		fi
+		if ! tmux has-session -t cmus
+		then
+			tmux new -d -s cmus -n music "dbus-launch cmus"
+		fi
+	else
+		tmux new -d -s "$SESSAO" -n main
+		tmux new-window -d -t "$SESSAO" -n bash
+		tmux new -d -s cmus -n music "dbus-launch cmus"
+		tmux attach -t "$SESSAO"
+	fi
+}
+
+main
+

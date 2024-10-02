@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Remake do script yt_download
+# Utilizar somente o link copiado do clipboard
+
+_dmenu(){
+	printf '%s\n' "$@" | dmenu -i -f -l "$#" -fn "Source Code Pro Medium:size=14"
+}
+
+_menu(){
+	_dmenu "$@"
+}
+
+download(){
+	local IFS=$'\n'
+	local opcao=$(_menu "Escolha opção" "[1] Audio" "[2] Video")
+	local link=$(xsel -o -b)
+	if [[ ! "$link" =~ http ]]
+	then
+		notify-send -u critical "ERRO" "Valor não é um link válido!"
+		exit 1
+	fi
+	AUDIOS="$HOME/music/AUDIO_DOWNLOADS"
+	VIDEOS="$HOME/videos"
+	case "${opcao:1:1}" in
+		(1)
+			download_audio "$link";;
+		(2)
+			download_video "$link";;
+		(*)
+			notify-send -u critical "Comando não identificado!";;
+	esac
+	# TODO: Verificar se variável vai realmente conter a saída de sucesso esperada
+	[[ $? ]] && notify-send "Download concluído!"
+}
+
+_ffmpeg(){
+	local proibido='\/' 
+	local temp="$(ls "$AUDIOS/temp_$(youtube-dl --no-playlist --youtube-skip-dash-manifest --socket-timeout 60 --get-id "$1")".*)"
+	local arquivo="$(youtube-dl --no-playlist --youtube-skip-dash-manifest --socket-timeout 60 --get-title "$1")"
+	ffmpeg -loglevel quiet -i "$temp" -q:a 5 "$AUDIOS/${arquivo//[$proibido]/}".ogg
+	[[ -e "$temp" ]] && rm "$temp"
+}
+
+download_audio(){
+	youtube-dl -q --no-playlist --youtube-skip-dash-manifest --socket-timeout 60 -f "bestaudio" -o "$AUDIOS/temp_%(id)s.%(ext)s" "$1"
+	while (( "$?" > 0 ))
+	do
+		download_audio "$1"
+	done
+	_ffmpeg "$1"
+}
+
+download_video(){
+	youtube-dl -q --no-playlist --youtube-skip-dash-manifest --socket-timeout 60 --hls-prefer-native -f "[height<=720]" -o "$VIDEOS/temp_%(id)s.%(ext)s" "$1"
+	while (( "$?" > 0 ))
+	do
+		download_video "$1"
+	done
+	local temp="$(ls "$VIDEOS/temp_$(youtube-dl --no-playlist --youtube-skip-dash-manifest --socket-timeout 60 --get-id "$1")".*)"
+	local arquivo="$(youtube-dl --no-playlist --youtube-skip-dash-manifest --socket-timeout 60 --get-title "$1")"
+	[[ -e "$temp" ]] && mv "$temp" "$VIDEOS/$arquivo.${temp##*.}"
+}
+
+main(){
+	download
+}
+
+main

@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+#Script para download de videos do youtube
+
+selecting_link(){
+	if [[ $1 != '' ]]
+	then
+		LINK="$1"
+	else
+		LINK=$(xsel -o -b)
+	fi
+}
+
+init_variables(){
+	NOME_SCRIPT="${1##*/}"
+	CARACTER_PROIBIDO='\/'
+	PASTA_MUSICA="$HOME/videos"
+
+	selecting_link "$2"
+
+	ARQUIVO_TEMP="$PASTA_MUSICA"/video_temp"$(youtube-dl --no-playlist --youtube-skip-dash-manifest --socket-timeout 60 --get-id "$LINK")"
+	ARQUIVO_FINAL=$(youtube-dl --no-playlist --youtube-skip-dash-manifest --socket-timeout 60 --get-title "$LINK")
+	DOWNLOAD=(youtube-dl -q --no-playlist --youtube-skip-dash-manifest --socket-timeout 60 --hls-prefer-native -f "[height<=720]" -o "$PASTA_MUSICA/video_temp%(id)s.%(ext)s" "$LINK")
+}
+
+try_again_if_error(){
+	((FLAC_LEVEL++))
+	[[ $FLAC_LEVEL -lt 5 ]] && "$NOME_SCRIPT" "$LINK"
+}
+
+remove_temp_file(){
+	[[ -f $ARQUIVO_TEMP ]] && rm "$ARQUIVO_TEMP"
+}
+
+rename_file(){
+	[[ -e $ARQUIVO_TEMP ]] && mv "$ARQUIVO_TEMP" "$PASTA_MUSICA/${ARQUIVO_FINAL//[$CARACTER_PROIBIDO]/}.${ARQUIVO_EXTENCAO##*.}"
+}
+
+# Comando principal
+run_youtube_dl(){
+	"${DOWNLOAD[@]}"
+	ARQUIVO_EXTENCAO=$(ls "$ARQUIVO_TEMP".*)
+	ARQUIVO_TEMP="$ARQUIVO_EXTENCAO"
+}
+
+erro_abortar(){
+	notify-send -u critical --expire-time=3250 "ERRO!" "Vídeo: $ARQUIVO_FINAL - Falhou..."
+	remove_temp_file
+	try_again_if_error
+}
+
+sucesso(){
+	notify-send --expire-time=3250 "SUCESSO!" "Vídeo: $ARQUIVO_FINAL - Concluído com Sucesso!"
+	rename_file
+}
+
+main(){
+	trap erro_abortar EXIT
+	set -e
+
+	# Shell Level
+	FLAC_LEVEL=
+	init_variables "$0" "$1"
+	run_youtube_dl
+
+	trap sucesso EXIT
+}
+
+main "$@"

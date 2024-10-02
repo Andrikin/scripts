@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Extrai arquivos flac utilizando arquivo cue
+
+_notify(){
+	notify-send -u critical "$1" "$2"
+}
+
+main(){
+	[[ ! "$1" == *.cue ]] && {
+		_notify "ERRO" "Arquivo não está com formato .cue!"
+		exit 1
+	}
+	[[ ! "$2" == *.flac ]] && {
+		_notify "ERRO" "Arquivo não está com formato .flac!"
+		exit 1
+	}
+	shnsplit -f "$1" -o flac -t "%p - %t" "$2"
+	[[ $? ]] && rm "$1" "$2"
+}
+
+main "$@"

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+main(){
+	# Creating connection
+	local IFNAME="wlp2s0"
+	local CON_NAME="PontoQuente"
+	nmcli con add type wifi ifname $IFNAME con-name $CON_NAME autoconnect yes ssid $CON_NAME
+	# Setting connection
+	nmcli con modify $CON_NAME 802-11-wireless.mode ap 802-11-wireless.band bg ipv4.method shared
+	# Setting password
+	nmcli con modify $CON_NAME wifi-sec.key-mgmt wpa-psk
+	nmcli con modify $CON_NAME wifi-sec.psk "andrikin"
+	# if (( $? ))
+	# then
+	# 	# Setting password
+	# 	nmcli con modify $CON_NAME wifi-sec.key-mgmt wpa-psk
+	# 	nmcli con modify $CON_NAME wifi-sec.psk "7@245aEfz1"
+	# else
+	# 	nmcli con delete $CON_NAME
+	# fi
+}
+
+main

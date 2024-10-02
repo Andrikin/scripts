@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+# TODO: Como ver as músicas que estão dentro da pasta?
+# TODO: Refatorar script para utilizar com cmus!!!
+
+# wofi_player cria um menu interativo para busca e interação básica com arquivos de música (dentro da pasta ~/Música/)
+# Músicas que tenham o mesmo nome irão entrar em conflito , não tocando nenhuma delas - SOLUÇÃO renomear de forma diferente ;P
+# Utilizando dmenu modificado com patches
+
+init_variables(){
+	SCRIPT_NAME=$(basename "$BASH_ARGV0")
+	CMD_FIFO_FILE="/tmp/mplayer-fifo"
+	PLAY=(mplayer -really-quiet -quiet -slave -input file="$CMD_FIFO_FILE")
+	# Arquivos usados
+	PLAYER_DIR="$HOME/.config/$SCRIPT_NAME"
+	MUSIC_LIST="$PLAYER_DIR/lista_de_musicas_completa.wofi"
+	IS_NEXT_SONG="$PLAYER_DIR/is_next_song.wofi"
+	MODULO="$PLAYER_DIR/modulo.wofi"
+	MUSIC_PATHS="$PLAYER_DIR/pastas_de_musicas.wofi"
+	REPEAT="$PLAYER_DIR/repeat.wofi"
+	PAUSED="$PLAYER_DIR/paused.wofi"
+	# Keys
+	KEY_PLAY=p
+	KEY_STOP=s
+	KEY_REPEAT=r
+	KEY_KILL_MUSIC=x
+	KEY_NEXT=n
+	KEY_PREVIOUS=b
+	KEY_PLAYLIST=q
+}
+
+update_songs_list() {
+	local MUSIC_DIR="$HOME/music/"
+	# Captura todas as músicas nos formatos flac, ogg, mp3
+	du -a "$MUSIC_DIR" | cut -f2 | grep --color=never ".flac\|.mp3\|.ogg\|.oga" > "$MUSIC_LIST"
+	# Captura todas as pastas dentro da pasta de músicas
+	du "$MUSIC_DIR"* | cut -f2 > "$MUSIC_PATHS"
+}
+
+redraw_statusbar(){
+	polybar-msg hook music_playing 1 > /dev/null
+}
+
+# $1=MUSICA
+player() {
+	redraw_statusbar
+	"${PLAY[@]}" "$1"
+	while (( $(< "$REPEAT") ))
+	do
+		"${PLAY[@]}" "$1"
+	done
+}
+
+pause_song(){
+	echo "pause" > "$CMD_FIFO_FILE"
+	toggle "$PAUSED"
+}
+
+reset_to_next_song(){
+	echo '1' > "$IS_NEXT_SONG"
+}
+
+player_playlist(){
+	local songs=("$@")
+	local index=0
+	reset_to_next_song
+	while (( $index < ${#songs[@]} ))
+   	do
+		player "${songs[$index]}"
+		# 0=false; other value=true
+		if (( $(< "$IS_NEXT_SONG") ))
+		then
+			((index++))
+		else
+			((index--))
+			reset_to_next_song
+		fi
+	done
+}
+
+toggle(){
+	((i=$(< "$1")>0?0:1))
+	echo "$i" > "$1"
+	redraw_statusbar
+}
+
+reset_statusbar(){
+	echo '0' > "$REPEAT"
+	echo '0' > "$PAUSED"
+	redraw_statusbar
+}
+
+# $1=ARQUIVO_LISTA; $2=MÓDULO
+playlist_queue(){
+	PLAYER_MENU_ROWS=10
+	echo "$2" > "$MODULO"
+	echo '0' > "$REPEAT"
+	# Sempre observar a necessidade de usar IFS (valor padrão <space><tab><newline>) quando criar listas de comandos
+	local IFS=$'\n'
+	local songs_list=($(shuf < "$1"))
+	local choose=
+	local songs=()
+	if (( $2 ))
+	then
+		choose=$(player_command_menu "Escolha uma música:" "${songs_list[@]##*/}")
+		# Se não for escolhida nenhuma música, encerrar o script
+		[[ -z $choose ]] && exit 0
+		songs+=($(grep --color=never "$choose$" "$1"))
+		player "${songs[@]}"
+	else
+		choose=$(player_command_menu "Escolha uma das pastas de música:" "${songs_list[@]##*/}")
+		# Se nenhuma playlist for escolhida, encerrar o script
+		[[ -n $choose ]] && notify-send -t 6000 "${SCRIPT_NAME^^}" "Escutando músicas da pasta: $choose" || exit 0
+		songs+=($(shuf < <(grep --color=never "$choose/" "$MUSIC_LIST")))
+		player_playlist "${songs[@]}"
+	fi
+	redraw_statusbar
+}
+
+# $1=WHAT_TO_KILL
+# 0=script; other_value=song
+process_kill(){
+	if (( $1 ))
+	then
+		pkill -f "^${PLAY[0]}" &
+	else
+		pkill -f "^${PLAY[0]}|^bash.*${SCRIPT_NAME}$" &
+	fi
+	reset_statusbar
+}
+
+# 1=PROXIMA MÚSICA; 0=MÚSICA ANTERIOR
+# kill song
+tracking_music(){
+	reset_statusbar
+	[[ $(< "$IS_NEXT_SONG") != $1 ]] && echo "$1" > "$IS_NEXT_SONG"
+	process_kill "1"
+}
+
+init_files(){
+	# Criando arquivo e diretórios
+	[[ ! -p $CMD_FIFO_FILE ]] && mkfifo "$CMD_FIFO_FILE"
+	[[ ! -d $PLAYER_DIR ]] && mkdir "$PLAYER_DIR"
+	[[ ! -e $MUSIC_LIST ]] && update_songs_list
+}
+
+run_player(){
+	dmenu -i -f -l "$PLAYER_MENU_ROWS" -fn "Source Code Pro Medium:size=14"
+}
+
+player_command_menu(){
+	printf '%s\n' "$@" | run_player
+}
+
+player_options(){
+	if [[ -z ${MUSIC_PLAYING:=$(pgrep -a "^${PLAY[0]}")} ]]
+   	then
+		PLAYER_MENU=("[1] - [Procurar por Música]" \
+					 "[2] - [Escolher por Músicas por Pasta]" \
+					 "[3] - [Atualizar lista de Músicas]")
+	else
+		if (( $(< "$MODULO") ))
+		then
+			PLAYER_MENU=("[$KEY_PLAY/$KEY_STOP] - [Play!/Stop!]" \
+						 "[$KEY_REPEAT] - [Repeat!]" \
+						 "[$KEY_KILL_MUSIC] - [Parar Música!]")
+		else
+			PLAYER_MENU=("[$KEY_PLAY/$KEY_STOP] - [Play!/Stop!]" \
+						 "[$KEY_REPEAT] - [Repeat!]" \
+						 "[$KEY_NEXT] - [Próxima Música!]" \
+						 "[$KEY_PREVIOUS] - [Música Anterior!]" \
+						 "[$KEY_PLAYLIST] - [Encerrar Playlist!]")
+		fi
+	fi
+	PLAYER_MENU_ROWS=$(( ${#PLAYER_MENU[@]} + 1 ))
+}
+
+main_menu(){
+	player_options
+	PLAYER_MAIN_MENU=$(player_command_menu "${SCRIPT_NAME^^} - MENU:" "${PLAYER_MENU[@]}")
+	[[ -z $PLAYER_MAIN_MENU ]] && exit 0
+	case "${PLAYER_MAIN_MENU:1:1}" in
+		(1) 
+			playlist_queue "$MUSIC_LIST" "1";;
+		(2) 
+			playlist_queue "$MUSIC_PATHS" "0";;
+		(3) 
+			update_songs_list;;
+		($KEY_PLAY|$KEY_STOP) 
+			pause_song;;
+		($KEY_REPEAT) 
+			toggle "$REPEAT";;
+		($KEY_PLAYLIST) 
+			process_kill "0";;
+		($KEY_KILL_MUSIC|$KEY_NEXT) 
+			tracking_music "1";;
+		($KEY_PREVIOUS) 
+			tracking_music "0";;
+		(*) 
+			notify-send -u critical -t 3250 "${SCRIPT_NAME^^}" "Comando não reconhecido!" & exit 0;;
+	esac
+}
+
+main(){
+	init_variables
+	init_files
+	main_menu
+}
+
+main
+

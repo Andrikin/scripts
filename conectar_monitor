@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Conecta à um monitor externo
+
+_dmenu(){
+	printf '%s\n' "$@" | dmenu -i -f -l "$(($# + 1))" -fn "Source Code Pro Medium:size=14"
+}
+
+_notificar_erro(){
+	notify-send -u critical -t 3250 "ERRO" "$1"
+}
+
+_lista_de_monitores(){
+	local IFS=$'\n'
+	local monitores=($(xrandr --query | grep -e "^.* $1" | cut -d' ' -f1))
+	printf '%s\n' "${monitores[@]}"
+}
+
+monitores_desconectados(){
+	_lista_de_monitores "disconnected"
+}
+
+monitores_conectados(){
+	_lista_de_monitores "connected"
+}
+
+menu(){
+	_dmenu "Escolha um monitor para conectar:" "$@" 
+}
+
+escolher_monitor_para_desconectar(){
+	echo "$(menu $(monitores_desconectados))"
+}
+
+escolher_monitor_para_conectar(){
+	echo "$(menu $(monitores_conectados))"
+}
+
+_encontrar_resolucao(){
+	xrandr --query | sed -n "/$1/,+1p" | grep -e "^\s\+.*" | sed -e "s/\s\+/:/g" | cut -d':' -f2
+}
+
+escolher_resolucao(){
+	printf '%s' "$(_encontrar_resolucao "$1")"
+}
+
+habilitar_monitor(){
+	# O monitor primário será sempre o do notebook
+	[[ $1 == '' ]] && {
+		_notificar_erro "Nenhuma opção escolhida!"
+		exit 1
+	}
+	xrandr --output eDP1 --primary --auto --output "$1" --mode "$(escolher_resolucao "$1")" --right-of eDP1
+}
+
+desabilitar_monitor(){
+	# Desabilita monitor, porém não finaliza as janelas abertas no monitor
+	[[ $1 == '' ]] && {
+		_notificar_erro "Nenhuma opção escolhida!"
+		exit 1
+	}
+	xrandr --output "$1" --off
+}
+
+conectar(){
+	# Conecta sempre o monitor como secundário, sempre à direita
+	habilitar_monitor $(escolher_monitor_para_conectar)
+}
+
+desconectar(){
+	desabilitar_monitor $(escolher_monitor_para_conectar)
+}
+
+main(){
+	case "$(_dmenu "conectar" "desconectar")" in
+		("conectar")
+			conectar;;
+		("desconectar")
+			desconectar;;
+		(*)
+			_notificar_erro "Nenhuma opção escolhida!";;
+	esac
+}
+
+main

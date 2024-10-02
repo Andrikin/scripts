@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Simples relógio para display no terminal
+
+_setup_terminal() {
+    # Setup the terminal for the TUI.
+    # '\e[?1049h': Use alternative screen buffer.
+    # '\e[?7l':    Disable line wrapping.
+    # '\e[?25l':   Hide the cursor.
+    # '\e[2J':     Clear the screen.
+    # '\e[1;Nr':   Limit scrolling to scrolling area.
+    #              Also sets cursor to (0,0).
+	printf '\e[?1049h\e[?7l\e[?25l\e[2J\e[H'
+    # Hide echoing of user input
+    stty -echo
+}
+
+_reset_terminal() {
+    # Reset the terminal to a useable state (undo all changes).
+    # '\e[?7h':   Re-enable line wrapping.
+    # '\e[?25h':  Unhide the cursor.
+    # '\e[2J':    Clear the terminal.
+    # '\e[;r':    Set the scroll region to its default value.
+    #             Also sets cursor to (0,0).
+    # '\e[?1049l: Restore main screen buffer.
+    printf '\e[?7h\e[?25h\e[2J\e[;r\e[?1049l'
+    # Show user input.
+    stty echo
+}
+
+_clear_screen() {
+    # Only clear the scrolling window (dir item list).
+    # '\e[%sH':    Move cursor to bottom of scroll area.
+    # '\e[9999C':  Move cursor to right edge of the terminal.
+    # '\e[1J':     Clear screen to top left corner (from cursor up).
+    # '\e[2J':     Clear screen fully (if using tmux) (fixes clear issues).
+    # '\e[1;%sr':  Clearing the screen resets the scroll region(?). Re-set it.
+    #              Also sets cursor to (0,0).
+	printf '\e[2J\e[H'
+}
+
+_snore(){
+	# Usage: _snore 1
+    #        _snore 0.2
+    read -rt "$1" <> <(true) || true
+}
+
+# Somente para Hyprland compositor
+_set_window(){
+	hyprctl dispatch pin 1
+}
+
+_clock(){
+	printf "%(%d/%b/%Y %H:%M)T\\n"
+}
+
+main(){
+	trap '_reset_terminal' EXIT
+	_set_window
+	_setup_terminal
+	while true
+	do
+		_clock
+		_snore 60
+		_clear_screen
+	done
+}
+
+main

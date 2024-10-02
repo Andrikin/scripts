@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+# TODO - Criar um mecanismos para não deixar mais de um processo rodar simultaneamente
+
+# Script para avisar quando a fonte desconectar ou parar de carregar
+
+snore() {
+    # Usage: read_sleep 1
+    #        read_sleep 0.2
+    read -rt "$1" <> <(true) || true
+}
+
+main(){
+	while true; do
+		if [[ $(< /sys/class/power_supply/BAT0/status) == Discharging ]]; then
+			notify-send -u critical -t 2000 "Aviso!" "Fonte está DESCONECTADA!"
+		fi
+		snore 1
+	done
+}
+
+main

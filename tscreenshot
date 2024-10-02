@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+# Script para tirar screenshot da tela
+# Modificado para ser utilizado em Wayland
+
+snore() {
+    read -rt "$1" <> <(true) || true
+}
+
+notify_sucess(){
+	if [[ $? ]]
+	then
+		notify-send -t 7000 "SCREENSHOT" "Concluído com Sucesso!"
+	else
+		notify-send -u critical -t 7000 "SCREENSHOT" "Erro: Comando resultou em falha!"
+	fi
+}
+
+# copy_to_clipboard(){
+# 	xclip -selection clipboard -target image/png -i "$IMAGEM"
+# }
+
+copy_to_clipboard(){
+	wl-copy < "$IMAGEM"
+}
+
+full_screen(){
+	snore 1
+	grim -c "$IMAGEM" && copy_to_clipboard
+	notify_sucess
+}
+
+# Envia imagem gerada para clipboard do sistema (facilita uso rápido em chats)
+grab_screen(){
+	grim -g "$(slurp)" "$IMAGEM" && copy_to_clipboard
+	notify_sucess
+}
+
+choosing_option(){
+	local option=$(printf "%s\n" "[1] Tela inteira" "[2] Tela selecionada" | tofi)
+	case "${option:1:1}" in
+		1)
+			full_screen;;
+		2)
+			grab_screen;;
+		*)
+			notify-send -u critical -t 7000 "SCREENSHOT" "Erro: Comando inválido!";;
+	esac
+}
+
+verify_dir(){
+	DIR="$HOME/documents/images/screenshot"
+	if [[ ! -d $DIR ]]
+	then
+		mkdir "$DIR"
+	fi
+}
+
+main(){
+	verify_dir
+	IMAGEM="$DIR/screeenshot-$(printf "%(%d-%b-%Y %H:%M:%S)T\\n").png"
+	case "$1" in
+		("grab")
+			grab_screen;;
+		(*)
+			choosing_option;;
+	esac
+}
+
+main "$@"
+

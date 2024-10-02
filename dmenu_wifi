@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# TODO - 
+
+init_variables(){
+	WIFI="off"
+	WIFI_STATUS=$(nmcli -t dev | grep --color=never wifi | cut -d':' -f3)
+}
+
+erro(){
+	[[ $ESCOLHER_WIFI != '' ]] && notify-send -u critical --expire-time=3250 "Erro!" "Não foi possível Conexão!"
+}
+
+sucesso(){
+	[[ $WIFI_STATUS = conectado ]] && notify-send --expire-time=3250 "Sucesso!" "Conexão Realizada!"
+}
+
+# $1=MENSAGEM_PROMPT
+run_dmenu_command(){
+	dmenu -p "$1" -i -f -l 5 -fn "Source Code Pro Medium:size=14"
+}
+
+verify_wifi(){
+	if [[ $WIFI_STATUS != desconectado ]]; then
+		WIFI=$(nmcli -t connection show --active | cut -d':' -f1)
+	fi
+}
+
+choose_wifi(){
+	ESCOLHER_WIFI=$(nmcli -t device wifi list | cut -d':' -f2 | run_dmenu_command "[$WIFI]")
+	if [[ $ESCOLHER_WIFI != '' ]]; then
+		nmcli device wifi connect "$ESCOLHER_WIFI" password "$(zenity --entry --text="Digite a senha do Wi-Fi:")"
+	else
+		exit
+	fi
+}
+
+main(){
+	trap erro EXIT
+	set -e
+	init_variables
+	verify_wifi
+	choose_wifi
+	trap sucesso EXIT
+}
+
+main

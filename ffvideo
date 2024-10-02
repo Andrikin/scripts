@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+# TODO - Videos podem conter embedded subtiles [como utilizar isto? Arquivos mkv possuem subtitles] [ffplay -vf subtitles=input.mkv:stream_index=2 input.mkv], Criar um script para fazer download automático de subtitles; Utilizar OpenSubtitlesDownload.py!
+# Quando o nome da pasta contém [], falha a reprodução do vídeo. Solução: remover [] (com tr -d)
+# [ffmpeg -i Movie.mkv -map 0:s:0 subs.srt] - retira embbeded subtitle pelo index
+# Utilizando uchardet (C++) para detectar file encoding
+
+# Script para abrir arquivos de vídeo com subtítulos usando ffmpeg
+
+close_player_on(){
+	[[ $(pgrep mplayer) ]] && pkill -f "^mplayer|^bash.*dmenu_player$" &
+}
+
+init_variables(){
+	VIDEO="$1"
+	ARQUIVO="${1%.*}"
+	ARQUIVO_SRT="${1/${1##*.}/srt}"
+	PLAY=(ffplay -loglevel quiet -autoexit -i)
+}
+
+get_subtitle(){
+	OpenSubtitlesDownload.py "$1"
+}
+
+get_file_size(){
+	ARQUIVO_TAMANHO=$(du -h "$1" | cut -f1)
+}
+
+download_subtitle(){
+	get_file_size "$1"
+	if [[ $ARQUIVO_TAMANHO == *G ]] && [[ ! -e $ARQUIVO_SRT ]]
+	then
+		get_subtitle "$1"
+		to_utf8 "$ARQUIVO"
+	else
+		# Se já existir .srt, converter para utf-8
+		[[ -e $ARQUIVO_SRT ]] && to_utf8 "$ARQUIVO"
+	fi
+}
+
+# Atualiza o status bar
+redraw_statusbar(){
+	polybar-msg hook music_playing 1
+}
+
+# $1=$ARQUIVO
+# Verifica a codificação do arquivo .srt e converter para UTF-8
+to_utf8(){
+	local sub_file=$(ls "$1".{sub,srt,ass,idx,ssa,vtt,ttml} 2> /dev/null) #|| return 0
+	local char_code=$(uchardet "$sub_file")
+
+	if [[ $char_code != utf-8 ]]
+	then
+		local temp_file="$1-temp.${sub_file##*.}"
+		iconv -f "$char_code" -t UTF-8 "$sub_file" -o "$temp_file"
+		[[ $sub_file != *.srt ]] && ffmpeg -i "$temp_file" "$1".srt && rm "$temp_file" "$sub_file" 
+		[[ -e $temp_file ]] && rm "$sub_file" && mv "$temp_file" "$1".srt
+	fi
+}
+
+run_cmd_play(){
+	# Problema com espaço? Sim, comandos que precisam interpretar "espaço" ou outros caracteres precisam ser "quotados"
+	"${PLAY[@]}" "$VIDEO"
+}
+
+play(){
+	redraw_statusbar
+	# Verificar se arquivo srt existe, caso contrário, rodar o vídeo sem
+	if [[ ! -e $ARQUIVO_SRT ]]
+	then
+		run_cmd_play
+	else
+		PLAY+=(-vf subtitles="$ARQUIVO_SRT")
+		run_cmd_play
+	fi
+	redraw_statusbar
+}
+
+main(){
+	close_player_on
+	init_variables "$1"
+	download_subtitle "$VIDEO"
+	play
+}
+
+main "$@"

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Menu de comandos
+
+tofi-run | bash

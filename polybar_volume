@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Get device: pacmd list-sinks
+
+# usage: polybar_volume [up, down]
+
+redraw_polybar(){
+	polybar-msg hook volume 1
+}
+
+# Retorna o nome do device 
+get_device(){
+	devices=$(pactl list short sinks)
+	if grep "RUNNING" <(pactl list short sinks) > /dev/null 
+	then
+		printf "$(grep "RUNNING" <(pactl list short sinks) | cut -d$'\t' -f2)"
+	else
+		printf "$(cut -d$'\t' -f2 <(pactl list short sinks) | sed -n 1p)"
+	fi
+}
+
+change_volume(){
+	case "$1" in
+		(up)
+			pactl set-sink-volume $(get_device) +1%;;
+		(down)
+			pactl set-sink-volume $(get_device) -1%;;
+		(*)
+			notify-send -u critical -t 7000 'POLYBAR-VOLUME' 'Valor não válido!';;
+	esac
+}
+
+main(){
+	change_volume "$1"
+	redraw_polybar
+}
+
+main "$@"

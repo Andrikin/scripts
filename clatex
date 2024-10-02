@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Recompilador de pdf's para LaTeX
+# Cria uma pasta em /tmp para armazenar os arquivos
+
+compilar(){
+	# Não havera pausas na hora da compilição. Porém, em caso de erros,
+	# o numero máximo sera de 100 erros
+	# Verificar .log 
+	pdflatex -file-line-error -interaction=nonstopmode -output-directory "${DIR}" "${FILE}" > /dev/null 2>&1
+}
+
+preview(){
+	zathura "${PDF}" > /dev/null 2>&1 & disown 
+}
+
+preparacao(){
+	if [[ ! -d $DIR ]]
+	then
+		mkdir "${DIR}"
+	fi
+}
+
+main(){
+	FILE="$1"
+	NAME="$(basename $1)"
+	DIR="/tmp/latex.andre/"
+	PDF="${DIR}${NAME%%.*}.pdf"
+	preparacao
+	compilar
+	preview
+}
+
+main "$@"

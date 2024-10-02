@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Extrair arquivos
+
+main(){
+	if [[ -f $1 ]]; then
+		case "$1" in
+			(*.tar.bz2)
+				tar xvjf "$1";;
+			(*.tar.gz)
+				tar xvzf "$1";;
+			(*.tar.xz)
+				tar -xf "$1";;
+			(*.bz2)
+				bunzip2 "$1";;
+			(*.rar)
+				unrar x "$1";;
+			(*.gz)
+				gunzip "$1";;
+			(*.tar)
+				tar xvf "$1";;
+			(*.tbz2)
+				tar xvjf "$1";;
+			(*.tgz)
+				tar xvzf "$1";;
+			(*.zip)
+				unzip "$1";;
+			(*.Z)
+				uncompress "$1";;
+			(*.7z)
+				7z x "$1";;
+			(*.deb)
+				local PASTA_OUTPUT="${1%%.*}"
+				mkdir "$PWD/$PASTA_OUTPUT"
+				ar x "$1" --output "$PASTA_OUTPUT";;
+			(*)
+				echo "$1 Não pode ser extraído!";;
+		esac
+	else
+		echo "$1 Não é um arquivo válido!"
+	fi
+}
+
+main "$@"

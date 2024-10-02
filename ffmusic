@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# Script player para arquivos de audio
+
+init_variables(){
+	MUSICA="$1"
+	PLAY=(mplayer -really-quiet)
+	ID_MUS=$(pgrep -f "^$PLAY")
+}
+
+# Dar update no statusbar
+atualizar_statusbar(){
+	polybar-msg hook music_playing 1
+}
+
+play_music(){
+	atualizar_statusbar
+	"${PLAY[@]}" "$MUSICA"
+}
+
+main(){
+	init_variables "$1"
+	[[ $ID_MUS != '' ]] && kill "$ID_MUS"
+	play_music
+	atualizar_statusbar
+}
+
+main "$@"

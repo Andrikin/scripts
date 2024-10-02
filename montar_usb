@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+run_dmenu(){
+	dmenu -i -f -l 5 -fn "Source Code Pro Medium:size=14"
+}
+
+run_wofi(){
+	wofi --show dmenu
+}
+
+run_tofi(){
+	tofi 2> /dev/null
+}
+
+obter_mountpoint(){
+	PASTA_USB="$HOME/mount/usb/"
+	# USB=$(lsblk | grep -v "sda" | sed -n "s/^..\(sd.*\) [[:digit:]]:.*$/\1/p" | run_dmenu)
+	# USB=$(lsblk | grep -v "sda" | sed -n "s/^..\(sd.*\) [[:digit:]]:.*$/\1/p" | run_wofi)
+	USB=$(lsblk | grep -v "sda" | sed -n "s/^..\(sd.*\) [[:digit:]]:.*$/\1/p" | run_tofi)
+	echo "$USB"
+	USB=${USB//\ /}
+}
+
+montar_usb(){
+	obter_mountpoint
+	if [[ $USB != "" ]]
+	then
+		sudo mount -t vfat /dev/"$USB" "$PASTA_USB" -o umask=000
+	else
+		notify-send -t 5000 "Nenhum USB encontrado!"
+	fi
+}
+
+desmontar_usb(){
+	PASTA_USB="$HOME/mount/usb/"
+	sudo umount "$PASTA_USB"
+}
+
+menu(){
+	printf '%s\n' "montar" "desmontar" | tofi
+}
+
+main(){
+	local IFS=$'\n'
+	local escolha=$(menu)
+	case "$escolha" in
+		(montar) montar_usb ;;
+		(desmontar) desmontar_usb ;;
+	esac
+}
+
+main

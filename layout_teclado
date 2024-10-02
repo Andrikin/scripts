@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Selecionando a configuração correta para o teclado
+# TODO: 
+# verificar se a configuração está correta para qualquer tipo de teclado usb
+# adicionar .evremap-note
+
+main(){
+	pkill evremap
+	if evremap list-devices | grep CASUE &> /dev/null # CASUE -> teclado
+	then
+		evremap remap /home/andre/.evremap-usb.toml & disown &> /dev/null
+	else
+		evremap remap /home/andre/.evremap.toml & disown &> /dev/null
+	fi
+}
+
+main

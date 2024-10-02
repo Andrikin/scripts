@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# TODO: Fazer script para arquivos e diretórios
+# Usage: adbpush <diretorio_origem> <diretorio_destino>
+# Diretório destino será aquele verificado pela navegação pelo comando 'adb shell'
+# OBS: Opção mais utilizada será provavelmente /mnt/sdcard
+# Ao conectar o celular por USB e ativar o compartilhamento de arquivos com ADB ativado
+# nas opções de Desenvolvedor, já terá o celular conectado, podendo acessá-lo pelo comando
+# 'adb shell'
+
+mkdir_adb(){
+	FINAL_PATH="$DEST_PATH/$1"
+	adb shell mkdir "${FINAL_PATH//\ /\\\ }"
+}
+
+push_it(){
+	adb push "$1" "$FINAL_PATH"
+}
+
+get_music_files(){
+	local IFS=$'\n'
+	MUSICS=($(ls "$1"))
+}
+
+get_directory(){
+	printf "$(basename "$1")"
+}
+
+push_files(){
+	get_music_files "$LOCAL_PATH"
+	mkdir_adb "$(get_directory "$LOCAL_PATH")"
+	for music in "${MUSICS[@]}"
+	do
+		push_it "$LOCAL_PATH/$music"
+	done
+}
+
+main(){
+	DEST_PATH="${2%%/}"
+	LOCAL_PATH="$PWD/${1%%/}"
+	push_files
+}
+
+main "$@"

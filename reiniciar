@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+# Remover o beep do terminal antes de reiniciar o pc
+xset b off
+sudo reboot

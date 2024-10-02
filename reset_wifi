@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+snore() {
+    # Usage: snore 1
+    #        snore 0.2
+    read -rt "$1" <> <(true) || true
+}
+
+nmcli radio wifi off
+notify-send "Wifi desligado!"
+snore 5
+nmcli radio wifi on
+notify-send "Wifi reativado!"

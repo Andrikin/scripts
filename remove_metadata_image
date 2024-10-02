@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Remover imagem metadata de arquivo de audio
+
+remove_metadata(){
+	ffmpeg -i "$1" -map 0 -map -0:v -c copy "$1.temp.flac" &> /dev/null
+	[[ -e "$1.temp.flac" ]] && rm "$1" || echo "Erro encontrado, Arquivo não excluído!"
+	mv "$1.temp.flac" "$1"
+}
+
+remove_metadata_folder(){
+	for music in "$PWD"/*.flac
+	do
+		remove_metadata "$music"
+		echo "Imagem metadata removida: ${music##*/}"
+	done
+}
+
+main(){
+	remove_metadata_folder
+}
+
+main
