@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# script para listar e instalar packages do archive.archlinux,
+# principalmente para downgrade
+
+instalar(){
+	local programa="${1%-[0-9.]*-[0-9]-*}"
+	sudo pacman -U "https://archive.archlinux.org/packages/${programa::1}/${programa}/${1}"
+}
+
+listar(){
+	if pacman -Ss "${1}" 1> /dev/null
+	then
+		curl -s "https://archive.archlinux.org/packages/${1::1}/${1}/" | sed -n "s/^.*>\(.*\)<.*$/\1/p" | grep --color=never -e "zst$"
+	fi
+}
+
+ajuda(){
+	local msg=(
+	"Comandos:" \
+	"list <pkg>			liste os pacotes com nome <pkg>" \
+	"install <pkg>			realiza a instalação do <pkg>"
+	)
+	printf '%s\n' "${msg[@]}"
+}
+
+sair(){
+	echo "$1: comando não listado." 
+	ajuda
+	exit $2
+}
+
+main(){
+	case "$1" in
+		(list)
+			# nome dos packages do pacman
+			shift
+			if (( $# > 1 ))
+			then
+				sair "$1" 1
+			fi
+			listar "$1"
+			;;
+		(install)
+			# input no formato listado no comando 'list'
+			shift
+			if (( $# == 1 ))
+			then
+				instalar "$1"
+			else
+				ajuda
+				exit 0
+			fi
+			;;
+		(*)
+			sair "$1" 0
+			;;
+	esac
+}
+
+main "$@"
