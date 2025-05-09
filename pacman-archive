@@ -2,6 +2,12 @@
 # script para listar e instalar packages do archive.archlinux,
 # principalmente para downgrade
 
+init(){
+	# Inicializa variáveis do script
+	ARCHIVE="https://archive.artixlinux.org/packages/"
+	ARCHIVE2="https://archive2.artixlinux.org/packages/"
+}
+
 # lista packages já instalados
 # input deve ser como o nome do package em pacman
 baixados(){
@@ -10,7 +16,7 @@ baixados(){
 
 instalar(){
 	local programa="${1%-[0-9.]*-[0-9]-*}"
-	sudo pacman -U "https://archive.archlinux.org/packages/${programa::1}/${programa}/${1}"
+	sudo pacman -U "${ARCHIVE}${programa::1}/${programa}/${1}"
 }
 
 # lista packages disponíveis em archive.archlinux
@@ -18,7 +24,7 @@ instalar(){
 listar(){
 	if pacman -Ss "${1}" 1> /dev/null
 	then
-		curl -s "https://archive.archlinux.org/packages/${1::1}/${1}/" | sed -n "s/^.*>\(.*\)<.*$/\1/p" | grep --color=never -e "zst$"
+		curl -s "${ARCHIVE}${1::1}/${1}/" | sed -n "s/^.*>\(.*\)<.*$/\1/p" | grep --color=never -e "zst$"
 	fi
 }
 
@@ -38,8 +44,9 @@ sair(){
 }
 
 main(){
+	init
 	case "$1" in
-		(list)
+		(-l|--list)
 			# nome dos packages do pacman
 			shift
 			if (( $# > 1 ))
@@ -48,7 +55,7 @@ main(){
 			fi
 			listar "$1"
 			;;
-		(install)
+		(-i|--install)
 			# input no formato listado no comando 'list'
 			shift
 			if (( $# == 1 ))
@@ -59,9 +66,12 @@ main(){
 				exit 0
 			fi
 			;;
-		(cached)
+		(-c|--cached)
 			shift
 			baixados "$1"
+			;;
+		(-h|--help)
+			echo "WIP"
 			;;
 		(*)
 			sair "$1" 0
