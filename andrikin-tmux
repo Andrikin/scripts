@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# WIP: listar diretórios, não escondidos, da /home/andre
+
+main(){
+	local selected=''
+	local IFS=$'\n'
+	# lista=($(find ~ -mindepth 1 -maxdepth 6 -type d 2> /dev/null | sed "/\.\<[[:alnum:][:punct:]]\+\>/d; /__\+/d"))
+	lista=($(fd . ~ -t d --min-depth=1 --max-depth=8))
+	lista+=($(fd . ~/.config -t d --min-depth=1 --max-depth=1))
+	lista+=($(fd . ~/.local -t d --min-depth=1 --max-depth=1))
+	lista+=($(tmux ls | cut -d: -f1)) # session allready open
+	selected=$(printf '%s\n' "${lista[@]}" | fzf)
+
+	local selected_name=$(basename "$selected")
+	local tmux_running=$(pgrep tmux)
+
+	# Caso não tenha escolhido nunhuma opção, encerrar o script
+	# Caso não tenha TMUX rodando, encerrar o script
+	if [[ -z "$selected" || -z "$TMUX" || -z "$tmux_running" ]]; then # -z: true para string com length zero
+		exit 0
+	fi
+
+	if ! tmux has-session -t "$selected_name" 2> /dev/null; then
+		if [[ -d "$selected" ]]; then
+			tmux new -d -s "$selected_name" -c "$selected" -n main
+		else
+			exit 0
+		fi
+	fi
+
+	tmux switch-client -t "$selected_name"
+}
+
+main
+
