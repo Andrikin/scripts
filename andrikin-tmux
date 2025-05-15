@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# WIP: listar diretórios, não escondidos, da /home/andre
+# listar diretórios, selecionar e ir para diretório, criando uma nova
+# sessão no tmux. Também possível ir para sessão já aberta.
 
 main(){
 	local selected=''
 	local IFS=$'\n'
-	# lista=($(find ~ -mindepth 1 -maxdepth 6 -type d 2> /dev/null | sed "/\.\<[[:alnum:][:punct:]]\+\>/d; /__\+/d"))
 	lista=($(fd . ~ -t d --min-depth=1 --max-depth=8))
-	lista+=($(fd . ~/.config -t d --min-depth=1 --max-depth=1))
-	lista+=($(fd . ~/.local -t d --min-depth=1 --max-depth=1))
+	lista+=($(ls -d ~/.config/*/))
+	lista+=($(ls -d ~/.local/share/*/))
 	lista+=($(tmux ls | cut -d: -f1)) # session allready open
 	selected=$(printf '%s\n' "${lista[@]}" | fzf)
 
