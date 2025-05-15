@@ -5,7 +5,7 @@
 main(){
 	local selected=''
 	local IFS=$'\n'
-	lista=($(fd . ~ -t d --min-depth=1 --max-depth=8))
+	lista=($(fd . ~ -t d --min-depth=1 --max-depth=4))
 	lista+=($(ls -d ~/.config/*/))
 	lista+=($(ls -d ~/.local/share/*/))
 	lista+=($(tmux ls | cut -d: -f1)) # session allready open
