@@ -8,6 +8,17 @@ init(){
 	ARCHIVE2="https://archive2.artixlinux.org/packages/"
 }
 
+help(){
+	local uso=(
+"Usage: -l|--list -i|--install -c|--cached -h|--help" \
+"-h, --help		:Show help message" \
+"-l, --list		:List all versions of a package from archive" \
+"-i, --install		:Install package from archive" \
+"-c, --cached		:List packages already installed" \
+		)
+	printf "%s\n" "${uso[@]}"
+}
+
 # lista packages já instalados
 # input deve ser como o nome do package em pacman
 baixados(){
@@ -28,18 +39,9 @@ listar(){
 	fi
 }
 
-ajuda(){
-	local msg=(
-	"Comandos:" \
-	"list <pkg>			liste os pacotes com nome <pkg>" \
-	"install <pkg>			realiza a instalação do <pkg>"
-	)
-	printf '%s\n' "${msg[@]}"
-}
-
 sair(){
 	echo "$1: comando não listado." 
-	ajuda
+	help
 	exit $2
 }
 
@@ -62,7 +64,7 @@ main(){
 			then
 				instalar "$1"
 			else
-				ajuda
+				help
 				exit 0
 			fi
 			;;
@@ -71,7 +73,8 @@ main(){
 			baixados "$1"
 			;;
 		(-h|--help)
-			echo "WIP"
+			help
+			exit 0
 			;;
 		(*)
 			sair "$1" 0
