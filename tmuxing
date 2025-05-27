@@ -9,7 +9,8 @@ main(){
 		if ! tmux has-session -t "$SESSAO"
 		then
 			tmux new -d -s "$SESSAO" -n main
-			tmux new-window -d -t "$SESSAO" -n bash
+			# Não é mais necessário
+			# tmux new-window -d -t "$SESSAO" -n bash
 		else
 			tmux attach -t "$SESSAO"
 		fi
